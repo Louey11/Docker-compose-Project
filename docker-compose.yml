@@ -1,102 +1,63 @@
-version: "3.8"
+version: "3"
 services:
-#  jenkins: 
-#    image: jenkins/jenkins:lts
-#    privileged: true
-#    user: mnaja
-#    ports:
-#     - 8081:8081
-#     - 50000:50000
-#    container_name: jenkins
-#    volumes:
-#    - /home/mnaja/Desktop/project:/var/jenkins_home
-#    - /var/run/docker.sock:/var/run/docker.sock
-
-  gitlab:
-    image: 'gitlab/gitlab-ce:latest'
-    restart: always
-    hostname: 'localhost'
-    container_name: gitlab-ce
+  jenkins:
+    image: jenkinsci/blueocean
+    container_name: jenkins
     environment:
-      GITLAB_OMNIBUS_CONFIG: |
-        external_url 'http://localhost'
+      - DOCKER_HOST=tcp://localhost:2375
+      - JENKINS_UC=http://updates.jenkins.io
+      - JENKINS_UC_EXPERIMENTAL=http://updates.jenkins.io/experimental
+      - JENKINS_INCREMENTALS_REPO_MIRROR=http://repo.jenkins-ci.org/incrementals
+    user: root
     ports:
-      - '8083:83'
-      - '8443:443'
+      - "8085:8080"
+      - "8443:8443"
+      - "50000:50000"  
+    expose:
+      - "8080"
     volumes:
-      - '$GITLAB_HOME/config:/etc/gitlab'
-      - '$GITLAB_HOME/logs:/var/log/gitlab'
-      - '$GITLAB_HOME/data:/var/opt/gitlab'
-    networks:
-      - gitlab
-  gitlabee-runner:
-    image: gitlab/gitlab-runner:alpine
-    container_name: gitlabee-runner
-    volumes:
-      - gitlab_home_runner_config:/home/gitlab-runner
-      - gitlab_etc_runner_config:/etc/gitlab-runner
-      
-      - /var/run/docker.sock:/var/run/docker.sock
-    
-    restart: unless-stopped
+      - jenkins-data:/var/jenkins_home
+      - jenkins-home:/home
 
 
-    networks:
-      - gitlab
+  nexus:
+    image: sonatype/nexus3
+    container_name: nexus
+    volumes:
+      - "nexus-data:/nexus-data"
+    ports:
+      - "8081:8081"
+    expose:
+      - "8081"
+
+  sonarqube:
+    image: sonarqube
+    container_name: sonarqube
+    ports:
+      - "9000:9000"
+    environment:
+      - sonar.jdbc.url=jdbc:postgresql://localhost/sonarqube
+    volumes:
+      - sonarqube_conf:/opt/sonarqube/conf
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+
+  db:
+    image: postgres
+    environment:
+      - POSTGRES_USER=sonar
+      - POSTGRES_PASSWORD=sonar
+    volumes:
+      - postgresql:/var/lib/postgresql
+      # This needs explicit mapping due to https://github.com/docker-library/postgres/blob/4e48e3228a30763913ece952c611e5e9b95c8759/Dockerfile.template#L52
+      - postgresql_data:/var/lib/postgresql/data
+
 volumes:
-  gitlab_home_runner_config:
-    # external: true // Specify if you wish to create and manage yourself
-  gitlab_etc_runner_config:
-
-#  sonarqube:
-#    image: sonarqube:community
-#    hostname: sonarqube
-#    container_name: sonarqube
-#    depends_on:
-#      - db
-#    environment:
-#      SONAR_JDBC_URL: jdbc:postgresql://db:5432/sonar
-#      SONAR_JDBC_USERNAME: sonar
-#      SONAR_JDBC_PASSWORD: sonar
-#    volumes:
-#      - sonarqube_data:/opt/sonarqube/data
-#      - sonarqube_extensions:/opt/sonarqube/extensions
-#      - sonarqube_logs:/opt/sonarqube/logs
-#    ports:
-#      - "9000:9000"
-#  db:
-#    image: postgres:12
-#    hostname: postgresql
-#    container_name: postgresql
-#    environment:
-#      POSTGRES_USER: sonar
-#      POSTGRES_PASSWORD: sonar
-#      POSTGRES_DB: sonar
-#    volumes:
-#      - postgresql:/var/lib/postgresql
-#      - postgresql_data:/var/lib/postgresql/data
-
-#volumes:
-#  sonarqube_data:
-#  sonarqube_extensions:
-#  sonarqube_logs:
-#  postgresql:
-#  postgresql_data:
-#  nexus-data: {}
-networks:
-  gitlab:
-    name: gitlab-network
-
-
-#  nexus:
-#    image: sonatype/nexus
-#    volumes:
-#      - "nexus-data:/sonatype-work"
-#    ports:
-#      - "8081:8081"
-  
-
-
-
-#volumes:
-#  projects:
+  nexus-data: {}
+  jenkins-data: {}
+  jenkins-home: {}
+  sonarqube_conf: {}
+  sonarqube_data: {}
+  sonarqube_extensions: {}
+  postgresql: {}
+  postgresql_data: {}
