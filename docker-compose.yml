@@ -18,17 +18,21 @@ services:
     volumes:
       - jenkins-data:/var/jenkins_home
       - jenkins-home:/home
+    networks:
+      - backend
 
 
   nexus:
     image: sonatype/nexus3
-    container_name: nexus
+    container_name: nexus_1
     volumes:
       - "nexus-data:/nexus-data"
     ports:
       - "8081:8081"
     expose:
       - "8081"
+    networks:
+      - backend
 
   sonarqube:
     image: sonarqube
@@ -36,21 +40,26 @@ services:
     ports:
       - "9000:9000"
     environment:
-      - sonar.jdbc.url=jdbc:postgresql://localhost/sonarqube
+      - SONARQUBE_JDBC_USERNAME=sonar
+      - SONARQUBE_JDBC_PASSWORD=sonar
     volumes:
       - sonarqube_conf:/opt/sonarqube/conf
       - sonarqube_data:/opt/sonarqube/data
       - sonarqube_extensions:/opt/sonarqube/extensions
+    networks:
+      - backend
 
-  db:
-    image: postgres
-    environment:
-      - POSTGRES_USER=sonar
-      - POSTGRES_PASSWORD=sonar
+
+
+  gitlab:
+    image: gitlab/gitlab-ce
+    ports:
+      - "8082:80"
+      - "2222:22"
     volumes:
-      - postgresql:/var/lib/postgresql
-      # This needs explicit mapping due to https://github.com/docker-library/postgres/blob/4e48e3228a30763913ece952c611e5e9b95c8759/Dockerfile.template#L52
-      - postgresql_data:/var/lib/postgresql/data
+      - gitlab_data:/var/opt/gitlab
+    networks:
+      - backend
 
 volumes:
   nexus-data: {}
@@ -59,5 +68,7 @@ volumes:
   sonarqube_conf: {}
   sonarqube_data: {}
   sonarqube_extensions: {}
-  postgresql: {}
-  postgresql_data: {}
+  gitlab_data: {}
+
+networks:
+  backend:    
